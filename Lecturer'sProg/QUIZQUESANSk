@@ -1,0 +1,227 @@
+import java.io.*;
+import java.net.*;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+
+public class QuizServer 
+{
+  public static ArrayList <String> ClientList = new ArrayList<String>();
+  public static ArrayList <String> StudentIDList = new ArrayList<String>();
+  public static ArrayList <String> StudentPASSList = new ArrayList<String>();
+
+                     public static ArrayList R = new ArrayList<String>();
+                     public static ArrayList W = new ArrayList<String>();
+                     public static ArrayList IDLIST = new ArrayList<String>();
+                     public  StringBuffer Rbuf = new StringBuffer();
+                     public  StringBuffer Wbuf = new StringBuffer();
+  private static int port=8888, maxConnections=0;
+  File file1;
+  File file2;
+  String time;
+    public String code,ID,PASS,ID_CAND,PASS_CAND;
+    
+  public QuizServer(File file1,File file2, String time) 
+  {
+      this.file1=file1;
+      this.file2=file2;
+      this.time=time;
+      startServer();
+      
+}
+  public void startServer()
+  {
+      
+    int i=0;
+   
+    try{
+      ServerSocket listener = new ServerSocket(port);
+      Socket server;
+        
+      while((i++ < maxConnections) || (maxConnections == 0))
+      {
+          
+        doComms connection;
+          
+        server = listener.accept();
+          
+       
+        doComms conn_c= new doComms(server,file1);
+          
+        Thread t = new Thread(conn_c);
+         
+        t.start();
+          
+      }
+    } catch (IOException ioe) {
+      System.out.println("IOException on socket listen: " + ioe);
+      ioe.printStackTrace();
+    }
+  }
+  
+        public void StringDivider1(String str) 
+        {
+        StringTokenizer token = new StringTokenizer(str);	
+        String str1,str2,str3,str4,str5,str6;
+        str1 = token.nextToken();
+        code = token.nextToken();
+        str3 = token.nextToken();
+        ID = token.nextToken();
+        str5 = token.nextToken();
+        PASS = token.nextToken();
+       // System.out.println("The property code is: "+code+" The ID is: "+ID+ " The password is: "+PASS);	
+        }
+        
+        public void StringDivider2(String str) 
+        {
+            boolean exp = false;
+        try{
+        StringTokenizer token = new StringTokenizer(str);	
+        String str1,str2,str3,str4;
+        str1 = token.nextToken();
+        ID_CAND = token.nextToken(); 
+        str3 = token.nextToken();
+        PASS_CAND = token.nextToken();
+        //System.out.println("The property code is: "+code+" The ID is: "+ID+ " The password is: "+PASS);	
+        }
+        catch(Exception e)
+        {
+            exp= true;
+        }
+        finally
+        {
+            if(exp==true)
+            {
+                ID_CAND = "";
+       
+                PASS_CAND = "";
+                
+            }
+        }
+        
+        }
+
+        public boolean IdPassMatcher(String ID,String PASS)
+        {
+            boolean flag = false;
+            
+            
+                      
+                        String ALPHA = "STUDENTLIST";
+                        File file = new File(ALPHA);
+
+
+                        FileInputStream fis = null;
+                        BufferedInputStream bis = null;
+                        DataInputStream dis = null;
+
+                    try
+                    {
+                    fis = new FileInputStream(file);
+
+
+                    bis = new BufferedInputStream(fis);
+                    dis = new DataInputStream(bis);
+                    String dataline;
+
+                    while (dis.available() != 0)
+                    {
+
+                      StringDivider2(dis.readLine());
+                      if( ID.equals(ID_CAND) && PASS.equals(PASS_CAND))
+                      {
+                            flag = true;
+                            System.out.println("Authorization Granted ");
+                      }
+                        
+                    }
+
+
+                    fis.close();
+                    bis.close();
+                    dis.close();
+
+                    }
+                    catch (FileNotFoundException e)
+                    {
+                    e.printStackTrace();
+                    }
+                    catch (IOException e)
+                    {
+                    e.printStackTrace();
+                    }
+                           
+            return flag;
+        }
+        
+class doComms implements Runnable 
+{
+    private Socket server;
+    private String line,input;
+    private ObjectOutputStream outStream ;
+    private DataOutputStream outStream2;
+    private File file;
+    public boolean flag1 = true;
+    doComms(Socket server,File file) 
+    {
+      this.file=file;  
+      this.server=server;
+    }
+
+    public void run () 
+    {
+
+         System.out.println(this.server.getInetAddress().getHostAddress());
+         QuizServer.ClientList.add(this.server.getInetAddress().getHostAddress());
+         ServerPanel.flag2=true;
+         BufferedInputStream in = null;
+         FileOutputStream fout = null;
+         
+        try 
+        {
+            try 
+            {
+                 DataInputStream intoData = new DataInputStream(server.getInputStream());
+                 outStream = new ObjectOutputStream(server.getOutputStream());
+                 outStream2 = new DataOutputStream(server.getOutputStream());
+                outStream.flush();
+                int count;
+                String str = intoData.readLine();
+                    System.out.println(str);
+                    if(str.contains("FZANS"))
+                    {       
+                     STRDiv(str);
+                        flag1=false;  
+                    }
+                    else
+                        flag1=true;
+                    
+                    if(flag1==true){
+                    StringDivider1(str); 
+                    boolean flag = IdPassMatcher(ID,PASS);
+                    
+                    
+                        if(code.contains("FZ") && flag)
+                        {
+                        outStream2.writeBytes("OKAUTH Duration: "+ time +" \n");
+                        streamFile(file);
+                        
+                        }
+                        else
+                        {
+                        
+                        outStream2.writeBytes("NOTAUTH \n");
+                        
+                        }
+                    }
+            } 
+            catch (IOException e) {
+                e.printStackTrace();
+            }
+             outStream2.flush();
+             outStream2.close();
+             server.close();
+       
+      } 
+      catch (IOException ioe) 
+      {
+        System.out.println("IOException 
